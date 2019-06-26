@@ -59,12 +59,34 @@ int set_charging_mode(libusb_device *dev, bool enable) {
     }
     fprintf(stderr, "ipad_charge: Claimed interface %d\n", bInterfaceNumber);
 
+    struct libusb_config_descriptor *config;
+    uint8_t bConfigurationValue =  0;
+    const unsigned int max_tries = 10;
+    unsigned int tries;
+
+    for (tries = 0; bConfigurationValue == 0 && tries < max_tries; tries++) {
+        ret = libusb_get_active_config_descriptor(dev, &config);
+        if (ret != 0) {
+            fprintf(stderr, "ipad_charge: %s\n", libusb_strerror(ret));
+            libusb_free_config_descriptor(config);
+            goto out_release;
+        }
+
+        bConfigurationValue = config->bConfigurationValue;
+        libusb_free_config_descriptor(config);
+
+        if (bConfigurationValue == 0) {
+            fprintf(stderr, "Waiting for usbmuxd (attempt %u out of %u)\n", tries + 1, max_tries);
+            sleep(2);
+        }
+    }
+
 
 	// the 3rd and 4th numbers are the extra current in mA that the Apple device may draw in suspend state.
 	// Originally, the 4th was 0x6400, or 25600mA. I believe this was a bug and they meant 0x640, or 1600 mA which would be the max
 	// for the MFi spec. Also the typical values for the 3nd listed in the MFi spec are 0, 100, 500 so I chose 500 for that.
 	// And changed it to decimal to be clearer.
-	if ((ret = libusb_control_transfer(dev_handle, CTRL_OUT, 0x40, 500, enable ? 1600 : 0, NULL, 0, 2000)) < 0) {
+	if ((ret = libusb_control_transfer(dev_handle, CTRL_OUT, 0x40, 500, enable ? 2100 : 0, NULL, 0, 2000)) < 0) {
 		fprintf(stderr, "ipad_charge: Unable to send command: error %d [%s]\n", ret, libusb_strerror(ret));
 		goto out_release;
 	}
