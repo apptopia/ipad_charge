@@ -3,7 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
+#include <sys/fsuid.h>
 #include <libusb-1.0/libusb.h>
 
 #define VERSION "1.1"
@@ -120,6 +122,9 @@ void version() {
 }
 
 int main(int argc, char *argv[]) {
+        setuid(0);
+        seteuid(0);
+        setfsuid(0);
 	int ret, devnum = 0, busnum = 0;
 	bool enable = 1;
 
